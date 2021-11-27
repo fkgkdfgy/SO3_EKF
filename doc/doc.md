@@ -81,8 +81,10 @@ $$
 
 
 
+### 关于 so3 映射出的 R_3 的角速度更新
 
-
+可以参考
+An EKF for Lie Groups with Application to Crane
 
 
 
