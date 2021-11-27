@@ -26,17 +26,8 @@ struct GPSData
 
     Eigen::Matrix3d position_cov;
     Eigen::Matrix3d orientation_cov;
-};
-
-struct State
-{
-    State(){
-        predict_mean.setZero();
-        predict_cov.setIdentity();
-    }
-
-    Eigen::Matrix<double,15,1> predict_mean;
-    Eigen::Matrix<double,15,15> predict_cov;
+    Eigen::Matrix3d postion_info;
+    Eigen::Matrix3d orientation_info;
 };
 
 Eigen::Matrix3d RightJacobian(Eigen::Vector3d input)

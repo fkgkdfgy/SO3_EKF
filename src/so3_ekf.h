@@ -28,7 +28,28 @@ struct ESKFOptions
     double n_w;
 };
 
-class State;
+struct State
+{
+    State(){
+        predict_mean.setZero();
+        predict_cov.setIdentity();
+    }
+
+    void UpdateCov(const Eigen::Matrix<double,15,15> & new_cov)
+    {
+        predict_cov = new_cov;
+    }
+    void UpdateMean(const Eigen::Matrix<double,15,1> & delta_x)
+    {
+        Eigen::Vector3d old_rot = predict_mean.block<3,1>(ROT,0);
+        predict_mean += delta_x;
+        predict_mean.block<3,1>(ROT,0) = Sophus::SO3d::exp(old_rot)*Sophus::SO3d::exp(delta_x.block<3,1>(ROT,0)).log();
+    }
+
+    Eigen::Matrix<double,15,1> predict_mean;
+    Eigen::Matrix<double,15,15> predict_cov;
+};
+
 
 class EKF
 {
@@ -186,10 +207,43 @@ void EKF::Update(const GPSData & gps)
     // res_obs position 位置观测上的residual
     Eigen::Matrix<double,3,1> pos_res;
     Eigen::Matrix<double,3,15> J_position;
-    
-    pos_res = gps.position - MEAN_(POS);
-    J_position = 
 
+    pos_res = gps.position - MEAN_(POS);
+    J_position.block<3,3>(0,3) = -Eigen::Matrix3d::Identity();
+    
+    // res_obs orientation 位姿上的观测
+    Eigen::Matrix<double,3,1> rot_res;
+    Eigen::Matrix<double,3,15> J_orientation;
+    Sophus::SO3d rot_res_so3 = Sophus::SO3d::exp(gps.orientation).inverse() * Sophus::SO3d::exp(MEAN_(ROT));
+
+    rot_res = (rot_res_so3).log();
+    J_orientation.block<3,3>(0,ROT) = rot_res_so3.Adj();
+
+    // 添加先验
+    Eigen::Matrix<double,15,1> piror_res;
+    Eigen::Matrix<double,15,15> J_piror;
+    // 优化第一次迭代默认 piror_res == 0 J_piror 默认单位阵
+    piror_res.setZero();
+    J_piror.setIdentity();
+
+
+    // 混合求解
+    Eigen::Matrix<double,15,1> delta_x,hybrid_gradient;
+    Eigen::Matrix<double,15,15> hybrid_hessian;
+
+    hybrid_hessian.setZero();
+
+    hybrid_hessian += J_position.transpose() * gps.postion_info * J_position;
+    hybrid_hessian += J_orientation.transpose() * gps.orientation_info * J_orientation;
+    hybrid_hessian += real_state.predict_cov.inverse();
+
+    hybrid_gradient.setZero();
+    hybrid_gradient += -J_position.transpose() * gps.postion_info * pos_res;
+    hybrid_gradient += -J_orientation.transpose() * gps.orientation_info * rot_res;
+
+    real_state.UpdateMean(hybrid_hessian.ldlt().solve(hybrid_gradient));
+    real_state.UpdateCov(hybrid_hessian.inverse());
+    
     // TODO 为了之后进行 IKF的拓展 这里最好使用 little_g2o 直接使用优化模型进行更新
 
 }
