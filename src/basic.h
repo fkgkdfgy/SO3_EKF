@@ -30,6 +30,13 @@ struct GPSData
     Eigen::Matrix3d orientation_info;
 };
 
+// 一个 DataUnit For a period of propagation and a Correct
+struct DataUnit
+{
+    std::vector<IMUData> imu_pool;
+    GPSData gps;
+};
+
 Eigen::Matrix3d RightJacobian(Eigen::Vector3d input)
 {
     Eigen::Matrix3d result;

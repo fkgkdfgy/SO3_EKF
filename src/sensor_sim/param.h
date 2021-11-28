@@ -20,14 +20,14 @@ public:
     double imu_timestep = 1./imu_frequency;
     double cam_timestep = 1./cam_frequency;
     double t_start = 0.;
-    double t_end = 400;  //  20 s
+    double t_end = 20;  //  20 s
 
     // noise
-    double gyro_bias_sigma = 1.0e-5;
-    double acc_bias_sigma = 0.0001;
+    double gyro_bias_sigma = 1.0e-5;      //  origin  1e-5
+    double acc_bias_sigma = 0.0001;       //  origin  0.0001
 
-    double gyro_noise_sigma = 0.015;    // rad/s * 1/sqrt(hz)
-    double acc_noise_sigma = 0.019;      //　m/(s^2) * 1/sqrt(hz)
+    double gyro_noise_sigma = 0.015;    // rad/s * 1/sqrt(hz)   origin 0.015
+    double acc_noise_sigma = 0.019;      //　m/(s^2) * 1/sqrt(hz) origin 0.019
 
     double pixel_noise = 1;              // 1 pixel noise
 

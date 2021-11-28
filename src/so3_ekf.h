@@ -58,13 +58,22 @@ class EKF
 
     #define MEAN_(var) real_state.predict_mean.block<3,1>(var,0)
     
-    EKF(const ESKFOptions & _options):options(_options){
+    EKF() = delete;
+
+    explicit EKF(const ESKFOptions & _options):options(_options){
         Init();
     }
 
     void Init();
 
     void Process();
+
+    void RunOnce(const DataUnit & input);
+
+    void SetPosition(const V3d & init_pos){MEAN_(POS) = init_pos;}
+    void SetRotation(const V3d & init_rot){MEAN_(ROT) = init_rot;}
+    void SetVelocity(const V3d & init_vel){MEAN_(VEL)= init_vel;}
+
     
     void AddIMU(const IMUData & imu){imu_pool_.push_back(imu);}
     void AddGPS(const GPSData & gps){gps_pool_.push_back(gps);}
@@ -101,7 +110,7 @@ class EKF
     // Noise
     Eigen::Matrix<double,12,12> Rn;
 
-    const double gravity_scale = 9.79;
+    const double gravity_scale = 9.81;
     double last_timestamp = -1;
 };
 
@@ -119,23 +128,31 @@ void EKF::Init()
 
 }
 
-void EKF::Process()
+// void EKF::Process()
+// {
+//     while(ok)
+//     {
+//         std::vector<IMUData> raw_imu,normal_imu;
+//         GPSData gps;
+//         if(CutData(raw_imu,gps))
+//         {
+//             for(const IMUData & imu:normal_imu)
+//             Predict(imu);
+//             Update(gps);
+
+
+//         }
+//     }
+
+// }
+
+void EKF::RunOnce(const DataUnit & input)
 {
-    while(ok)
-    {
-        std::vector<IMUData> raw_imu,normal_imu;
-        GPSData gps;
-        if(CutData(raw_imu,gps))
-        {
-            for(const IMUData & imu:normal_imu)
-            Predict(imu);
-            Update(gps);
-
-
-        }
-    }
-
+    for(const IMUData & imu:input.imu_pool)
+    Predict(imu);
+    Update(input.gps);
 }
+
 
 void EKF::Predict(const IMUData & raw_imu)
 {
@@ -168,7 +185,7 @@ void EKF::Predict(const IMUData & raw_imu)
 
     // 方差准备工作
     Eigen::Matrix<double,15,15> F;
-    Eigen::Matrix<double,15,6> G;
+    Eigen::Matrix<double,15,12> G;
     Eigen::Matrix3d real_Gyr_hat = Sophus::SO3d::hat(imu.Gyr*delta_timestamp);
     Eigen::Matrix3d theta_hat = Sophus::SO3d::hat(R_b_in_w_so3.log());
 
@@ -196,14 +213,19 @@ void EKF::Predict(const IMUData & raw_imu)
     F_(ROT,ROT) = -0.5*real_Gyr_hat;
     F_(ROT,BIAS_GYR) = - Eigen::Matrix3d::Identity()*delta_timestamp
                        - 0.5*theta_hat*delta_timestamp;
-    G_(ROT,BIAS_GYR) = - F_(ROT,BIAS_GYR);
+    G_(ROT,N_GYR) = - F_(ROT,N_GYR);
 
     real_state.predict_cov = F*real_state.predict_cov*F.transpose() + G*Rn*G.transpose();
 }
 
 void EKF::Update(const GPSData & gps)
 {
-    
+    std::cout<<"------- EKF output before correct:-------"<<std::endl;
+    std::cout<<MEAN_(POS).transpose()<<"\t"<< MEAN_(ROT).transpose()<<"\t"<<MEAN_(BIAS_ACC)<<std::endl;
+    std::cout<<"------- real output:-------"<<std::endl;
+    std::cout<<gps.position.transpose()<<"\t"<<gps.orientation.transpose()<<std::endl; 
+
+
     // 这里主要使用和EKF对等的优化方法进行更新，具体内容见 doc.md
 
     Eigen::Matrix<double,6,15> K;
@@ -248,7 +270,13 @@ void EKF::Update(const GPSData & gps)
     hybrid_gradient += -J_position.transpose() * gps.postion_info * pos_res;
     hybrid_gradient += -J_orientation.transpose() * gps.orientation_info * rot_res;
 
-    real_state.UpdateMean(hybrid_hessian.ldlt().solve(hybrid_gradient));
+    delta_x = hybrid_hessian.ldlt().solve(hybrid_gradient);
+
+    real_state.UpdateMean(delta_x);
     real_state.UpdateCov(hybrid_hessian.inverse());
+    std::cout<<"------- EKF output:-------"<<std::endl;
+    std::cout<<MEAN_(POS).transpose()<<"\t"<< MEAN_(ROT).transpose()<<std::endl;
+    std::cout<<"------- real output:-------"<<std::endl;
+    std::cout<<gps.position.transpose()<<"\t"<<gps.orientation.transpose()<<std::endl; 
     
 }

@@ -8,23 +8,19 @@
 #include "imu.h"
 #include "basic.h"
 
-// 一个 DataUnit For a period of propagation and a Correct
-struct DataUnit
-{
-    std::vector<IMUData> imu_pool;
-    GPSData gps;
-};
-
 class Simulator
 {
     public:
 
     std::vector<DataUnit> GenerateTestData();   
+    Param params;
+    Eigen::Vector3d init_pos;
+    Eigen::Vector3d init_rot;
+    Eigen::Vector3d init_vec;
 };
 
 std::vector<DataUnit> Simulator::GenerateTestData()
 {
-    Param params;
     IMU imuGen(params);
 
     // create imu data
@@ -49,6 +45,11 @@ std::vector<DataUnit> Simulator::GenerateTestData()
     std::vector<DataUnit> result;
     int count = 0;
     DataUnit tmp_unit;
+
+    init_pos = imudata.front().twb;
+    init_rot = Sophus::SO3d(imudata.front().Rwb).log();
+    init_vec = imudata.front().imu_velocity;
+
     for(int i =0;i<imudata.size();i++)
     {
         IMUData tmp_imu;
@@ -57,12 +58,16 @@ std::vector<DataUnit> Simulator::GenerateTestData()
         tmp_imu.timestamp = imudata[i].timestamp;
         tmp_unit.imu_pool.push_back(tmp_imu);
         count++;
-        if(count = params.imu_gps_interval)
+        if(count == params.imu_gps_interval)
         {
             GPSData tmp_gps;
             tmp_gps.timestamp = imudata[i].timestamp;
             tmp_gps.position = imudata[i].twb;
             tmp_gps.orientation = Sophus::SO3d(imudata[i].Rwb).log();
+            tmp_gps.position_cov = Eigen::Matrix3d::Identity()* 1e-3;
+            tmp_gps.orientation_cov = Eigen::Matrix3d::Identity()*1e-3;
+            tmp_gps.postion_info = tmp_gps.position_cov.inverse();
+            tmp_gps.orientation_info = tmp_gps.orientation_cov.inverse();
             tmp_unit.gps = tmp_gps;
             result.push_back(tmp_unit);
             tmp_unit.imu_pool.clear();
