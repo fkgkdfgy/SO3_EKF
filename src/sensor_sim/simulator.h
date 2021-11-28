@@ -9,7 +9,7 @@
 #include "basic.h"
 
 // 一个 DataUnit For a period of propagation and a Correct
-class DataUnit
+struct DataUnit
 {
     std::vector<IMUData> imu_pool;
     GPSData gps;
@@ -46,5 +46,28 @@ std::vector<DataUnit> Simulator::GenerateTestData()
     imuGen.init_twb_ = imudata.at(0).twb;
     imuGen.init_Rwb_ = imudata.at(0).Rwb;
 
-    
+    std::vector<DataUnit> result;
+    int count = 0;
+    DataUnit tmp_unit;
+    for(int i =0;i<imudata.size();i++)
+    {
+        IMUData tmp_imu;
+        tmp_imu.Acc = imudata[i].imu_acc;
+        tmp_imu.Gyr = imudata[i].imu_gyro;
+        tmp_imu.timestamp = imudata[i].timestamp;
+        tmp_unit.imu_pool.push_back(tmp_imu);
+        count++;
+        if(count = params.imu_gps_interval)
+        {
+            GPSData tmp_gps;
+            tmp_gps.timestamp = imudata[i].timestamp;
+            tmp_gps.position = imudata[i].twb;
+            tmp_gps.orientation = Sophus::SO3d(imudata[i].Rwb).log();
+            tmp_unit.gps = tmp_gps;
+            result.push_back(tmp_unit);
+            tmp_unit.imu_pool.clear();
+            count =0;
+        }
+    }
+    return result;
 }

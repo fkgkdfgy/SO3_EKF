@@ -16,6 +16,7 @@ public:
     // time
     int imu_frequency = 200;
     int cam_frequency = 30;
+    int imu_gps_interval = 20;  //   生成 DataUnit 的频率
     double imu_timestep = 1./imu_frequency;
     double cam_timestep = 1./cam_frequency;
     double t_start = 0.;
