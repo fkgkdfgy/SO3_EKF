@@ -14,8 +14,9 @@
 #define BIAS_ACC 9
 #define BIAS_GYR 12
 #define N_ACC 0
-#define N_GYR 0
-
+#define N_GYR 3
+#define N_BA 6
+#define N_BG 9
 
 struct ESKFOptions
 {
@@ -49,7 +50,6 @@ struct State
     Eigen::Matrix<double,15,1> predict_mean;
     Eigen::Matrix<double,15,15> predict_cov;
 };
-
 
 class EKF
 {
@@ -99,7 +99,7 @@ class EKF
     bool init;
 
     // Noise
-    const Eigen::Matrix<double,12,12> Rn;
+    Eigen::Matrix<double,12,12> Rn;
 
     const double gravity_scale = 9.79;
     double last_timestamp = -1;
@@ -111,6 +111,12 @@ void EKF::Init()
     error_state = State();
     ok = false;
     init = false;
+
+    Rn.block<3,3>(N_ACC,N_ACC) = Eigen::Matrix3d::Identity() * options.n_a;
+    Rn.block<3,3>(N_GYR,N_GYR) = Eigen::Matrix3d::Identity() * options.n_w;
+    Rn.block<3,3>(N_BA,N_BA) = Eigen::Matrix3d::Identity() * options.n_ba;
+    Rn.block<3,3>(N_BG,N_BG) = Eigen::Matrix3d::Identity() * options.n_bw;
+
 }
 
 void EKF::Process()
@@ -124,7 +130,8 @@ void EKF::Process()
             for(const IMUData & imu:normal_imu)
             Predict(imu);
             Update(gps);
-            ResetErrorState();
+
+
         }
     }
 
@@ -244,6 +251,4 @@ void EKF::Update(const GPSData & gps)
     real_state.UpdateMean(hybrid_hessian.ldlt().solve(hybrid_gradient));
     real_state.UpdateCov(hybrid_hessian.inverse());
     
-    // TODO 为了之后进行 IKF的拓展 这里最好使用 little_g2o 直接使用优化模型进行更新
-
 }

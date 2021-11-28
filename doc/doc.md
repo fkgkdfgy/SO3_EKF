@@ -79,12 +79,71 @@ $$
    
    实际上在优化框架上，就有了一个非常基本的结论也就是说看求导的方式。
 
+### 关于方差的更新
+
+EKF更新方式:
+
+   Based on Inverse Matrix Lemma
+$$
+   (A+BDC)^{-1} = A^{-1} - A^{-1}B(D^{-1}+CA^{-1}B)^{-1}CA^{-1}
+$$
+
+$$
+
+   \Sigma_{P_{k+1|k+1}}^{-1} = (I - KH)\Sigma_{P_{k+1|k}}^{-1}
+   \\
+   \Sigma_{P_{k+1|k+1}}^{-1} = \Sigma_{P_{k+1|k}}^{-1} - \Sigma_{P_{k+1|k}}^{-1}H^T(H\Sigma_{P_{k+1|k}}^{-1}H^T+\Sigma_{obs}^{-1})^{-1}H\Sigma_{P_{k+1|k}}^{-1}
+   \\
+   \Sigma_{P_{k+1|k+1}}^{-1}=(H^T\Sigma_{obs}H+\Sigma_{P_{k+1|k}})^{-1}
+$$
+
+以上说明了 使用优化框架的Hessian 对 EKF 的方差进行更新的合理性
 
 
 ### 关于 so3 映射出的 R_3 的角速度更新
 
 可以参考
 An EKF for Lie Groups with Application to Crane
+
+### 关于 IEKF
+
+IEKF 和 优化并不等价。
+IEKF 的观测进行迭代的时候，线性化点会发生变化。认为IEKF不会有EKF的稳定性。
+如果想要让IEKF有相同的稳定性，目前认为需要固定线性化点。
+
+突然发现原来是自己记错了， IEKF 存在对于 X 的修正项，这种情况下，IEKF和优化等价
+![](./pic/1.jpg)
+![](./pic/2.jpg)
+
+
+
+
+
+### 欧拉角速度转 omega
+![](./pic/3.png)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
