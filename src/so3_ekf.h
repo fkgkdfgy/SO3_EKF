@@ -44,7 +44,7 @@ struct State
     {
         Eigen::Vector3d old_rot = predict_mean.block<3,1>(ROT,0);
         predict_mean += delta_x;
-        predict_mean.block<3,1>(ROT,0) = Sophus::SO3d::exp(old_rot)*Sophus::SO3d::exp(delta_x.block<3,1>(ROT,0)).log();
+        predict_mean.block<3,1>(ROT,0) = (Sophus::SO3d::exp(old_rot)*Sophus::SO3d::exp(delta_x.block<3,1>(ROT,0))).log();
     }
 
     Eigen::Matrix<double,15,1> predict_mean;
@@ -157,22 +157,18 @@ void EKF::RunOnce(const DataUnit & input)
 void EKF::Predict(const IMUData & raw_imu)
 {
     //进行速度上的更新
-    if(last_timestamp <0)
-    {
-        last_timestamp = raw_imu.timestamp;
-        return ;
-    }
 
     // 进行数据准备
-    double delta_timestamp = raw_imu.timestamp - last_timestamp;
+    double delta_timestamp = 0.005;
     Sophus::SO3d R_b_in_w_so3 = Sophus::SO3d::exp(MEAN_(ROT));
-    Eigen::Matrix3d R_b_in_w = R_b_in_w.matrix();
+    Eigen::Matrix3d R_b_in_w = R_b_in_w_so3.matrix();
 
     IMUData imu;
     imu.Gyr = raw_imu.Gyr - MEAN_(BIAS_GYR);
     imu.Acc = raw_imu.Acc - MEAN_(BIAS_ACC);
     double square_timestamp = delta_timestamp * delta_timestamp;
-    V3d Acc_in_w = R_b_in_w*imu.Acc - R_b_in_w*(Eigen::Vector3d()<<0,0,gravity_scale).finished();
+
+    V3d Acc_in_w = R_b_in_w*imu.Acc - (Eigen::Vector3d()<<0,0,gravity_scale).finished();;
 
     // 对位姿进行递推
     MEAN_(POS) += MEAN_(VEL)*delta_timestamp + 0.5 *  Acc_in_w * square_timestamp;
@@ -221,7 +217,7 @@ void EKF::Predict(const IMUData & raw_imu)
 void EKF::Update(const GPSData & gps)
 {
     std::cout<<"------- EKF output before correct:-------"<<std::endl;
-    std::cout<<MEAN_(POS).transpose()<<"\t"<< MEAN_(ROT).transpose()<<"\t"<<MEAN_(BIAS_ACC)<<std::endl;
+    std::cout<<MEAN_(POS).transpose()<<"\t"<< MEAN_(ROT).transpose()<<"\t"<<MEAN_(BIAS_ACC).transpose()<<std::endl;
     std::cout<<"------- real output:-------"<<std::endl;
     std::cout<<gps.position.transpose()<<"\t"<<gps.orientation.transpose()<<std::endl; 
 
@@ -237,6 +233,7 @@ void EKF::Update(const GPSData & gps)
     Eigen::Matrix<double,3,1> pos_res;
     Eigen::Matrix<double,3,15> J_position;
 
+    J_position.setZero();
     pos_res = gps.position - MEAN_(POS);
     J_position.block<3,3>(0,3) = -Eigen::Matrix3d::Identity();
     
