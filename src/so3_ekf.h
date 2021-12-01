@@ -135,23 +135,6 @@ void EKF::Init()
 
 }
 
-// void EKF::Process()
-// {
-//     while(ok)
-//     {
-//         std::vector<IMUData> raw_imu,normal_imu;
-//         GPSData gps;
-//         if(CutData(raw_imu,gps))
-//         {
-//             for(const IMUData & imu:normal_imu)
-//             Predict(imu);
-//             Update(gps);
-
-
-//         }
-//     }
-
-// }
 
 void EKF::RunOnce(const DataUnit & input)
 {
