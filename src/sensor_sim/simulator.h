@@ -65,8 +65,8 @@ std::vector<DataUnit> Simulator::GenerateTestData()
             tmp_gps.timestamp = e.timestamp;
             tmp_gps.position = e.twb;
             tmp_gps.orientation = Sophus::SO3d(e.Rwb).log();
-            tmp_gps.position_cov = Eigen::Matrix3d::Identity()* 1e-9 * 1e-9;
-            tmp_gps.orientation_cov = Eigen::Matrix3d::Identity()*1e-9 * 1e-9;
+            tmp_gps.position_cov = Eigen::Matrix3d::Identity()* 1e-1 * 1e-1;
+            tmp_gps.orientation_cov = Eigen::Matrix3d::Identity()*1e-2 * 1e-2;
             tmp_gps.postion_info = tmp_gps.position_cov.inverse();
             tmp_gps.orientation_info = tmp_gps.orientation_cov.inverse();
             tmp_unit.gps = tmp_gps;

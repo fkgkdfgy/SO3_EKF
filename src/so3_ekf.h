@@ -213,10 +213,10 @@ void EKF::Predict(const IMUData & raw_imu)
 
     // 角度方差递推
     // 这里直接参考doc 内文章的实现，取一阶近似
-    F_(ROT,ROT) = -0.5*real_Gyr_hat;
+    F_(ROT,ROT) = -0.5*real_Gyr_hat + Eigen::Matrix3d::Identity();
     F_(ROT,BIAS_GYR) = - Eigen::Matrix3d::Identity()*delta_timestamp
                        - 0.5*theta_hat*delta_timestamp;
-    G_(ROT,N_GYR) = - F_(ROT,N_GYR);
+    G_(ROT,N_GYR) = - F_(ROT,BIAS_GYR);
  
     // 没有进行Bias上面的添加 导致方差矩阵不可逆
     F_(BIAS_ACC,BIAS_ACC) = Eigen::Matrix3d::Identity();
@@ -225,7 +225,11 @@ void EKF::Predict(const IMUData & raw_imu)
     G_(BIAS_ACC,N_BA) = Eigen::Matrix3d::Identity()*delta_timestamp;
     G_(BIAS_GYR,N_BG) = Eigen::Matrix3d::Identity()*delta_timestamp;
 
+    // cout<<"--------- Old Position Covariance: ------------"<<endl<<real_state.predict_cov.block<3,3>(POS,POS).diagonal().transpose()<<endl;
+    // cout<<"--------- New Add Covariance Item: ----------"<<endl<<(G*Rn*G.transpose()).diagonal().transpose()<<endl;
+    // cout<<"--------- NEW Basic Covariance Item: -----------"<<endl<<(F*real_state.predict_cov*F.transpose()).block<3,3>(POS,POS).diagonal().transpose()<<endl;
     real_state.predict_cov = F*real_state.predict_cov*F.transpose() + G*Rn*G.transpose();
+//     cout<<"--------- New Position Covariance: ------------"<<endl<<real_state.predict_cov.block<3,3>(POS,POS).diagonal().transpose()<<endl;
 }
 
 void EKF::Update(const GPSData & gps)
@@ -294,5 +298,5 @@ void EKF::Update(const GPSData & gps)
     std::cout<<MEAN_(POS).transpose()<<"\t"<< MEAN_(ROT).transpose()<<"\t"<<MEAN_(BIAS_ACC).transpose()<<"\t" << MEAN_(BIAS_GYR).transpose()<<std::endl;
     std::cout<<"------- real output:-------"<<std::endl;
     std::cout<<gps.position.transpose()<<"\t"<<gps.orientation.transpose()<<std::endl; 
-    
+    std::cout<<"------- NEW Covariance: --------:"<<endl<< hybrid_hessian.inverse().diagonal().transpose()<<endl;
 }

@@ -16,7 +16,7 @@ class TestHandler
     {
         // EKF 参数设置
         Simulator sim;
-        sim.params.imu_gps_interval = 2000;
+        sim.params.imu_gps_interval = 200;
         ESKFOptions options;
         options.n_a = sim.params.acc_noise_sigma * sim.params.acc_noise_sigma;
         options.n_w = sim.params.gyro_noise_sigma * sim.params.gyro_noise_sigma; 
