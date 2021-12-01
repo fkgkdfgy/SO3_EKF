@@ -50,22 +50,23 @@ std::vector<DataUnit> Simulator::GenerateTestData()
     init_rot = Sophus::SO3d(imudata.front().Rwb).log();
     init_vec = imudata.front().imu_velocity;
 
-    for(int i =0;i<imudata.size();i++)
+    for(int i =0;i<imudata_noise.size();i++)
     {
+        const auto & e = imudata_noise[i];
         IMUData tmp_imu;
-        tmp_imu.Acc = imudata[i].imu_acc;
-        tmp_imu.Gyr = imudata[i].imu_gyro;
-        tmp_imu.timestamp = imudata[i].timestamp;
+        tmp_imu.Acc = e.imu_acc;
+        tmp_imu.Gyr = e.imu_gyro;
+        tmp_imu.timestamp = e.timestamp;
         tmp_unit.imu_pool.push_back(tmp_imu);
         count++;
         if(count == params.imu_gps_interval)
         {
             GPSData tmp_gps;
-            tmp_gps.timestamp = imudata[i].timestamp;
-            tmp_gps.position = imudata[i].twb;
-            tmp_gps.orientation = Sophus::SO3d(imudata[i].Rwb).log();
-            tmp_gps.position_cov = Eigen::Matrix3d::Identity()* 1e-3;
-            tmp_gps.orientation_cov = Eigen::Matrix3d::Identity()*1e-3;
+            tmp_gps.timestamp = e.timestamp;
+            tmp_gps.position = e.twb;
+            tmp_gps.orientation = Sophus::SO3d(e.Rwb).log();
+            tmp_gps.position_cov = Eigen::Matrix3d::Identity()* 1e-9 * 1e-9;
+            tmp_gps.orientation_cov = Eigen::Matrix3d::Identity()*1e-9 * 1e-9;
             tmp_gps.postion_info = tmp_gps.position_cov.inverse();
             tmp_gps.orientation_info = tmp_gps.orientation_cov.inverse();
             tmp_unit.gps = tmp_gps;

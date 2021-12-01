@@ -8,6 +8,9 @@
 */
 #include "basic.h"
 
+using namespace std;
+
+
 #define ROT 0
 #define POS 3
 #define VEL 6
@@ -29,11 +32,15 @@ struct ESKFOptions
     double n_w;
 };
 
+struct EKFLog
+{
+};
+
 struct State
 {
     State(){
         predict_mean.setZero();
-        predict_cov.setIdentity();
+        predict_cov.setZero();
     }
 
     void UpdateCov(const Eigen::Matrix<double,15,15> & new_cov)
@@ -200,8 +207,8 @@ void EKF::Predict(const IMUData & raw_imu)
     // 位置方差递推
     F_(POS,POS) = Eigen::Matrix3d::Identity();
     F_(POS,VEL) = Eigen::Matrix3d::Identity() * delta_timestamp;
-    F_(POS,BIAS_ACC) = -0.5 * R_b_in_w * square_timestamp;
     F_(POS,ROT) = -0.5*Sophus::SO3d::hat(Acc_in_w * square_timestamp);
+    F_(POS,BIAS_ACC) = -0.5 * R_b_in_w * square_timestamp;
     G_(POS,N_ACC) = -F_(POS,BIAS_ACC);
 
     // 角度方差递推
@@ -210,6 +217,13 @@ void EKF::Predict(const IMUData & raw_imu)
     F_(ROT,BIAS_GYR) = - Eigen::Matrix3d::Identity()*delta_timestamp
                        - 0.5*theta_hat*delta_timestamp;
     G_(ROT,N_GYR) = - F_(ROT,N_GYR);
+ 
+    // 没有进行Bias上面的添加 导致方差矩阵不可逆
+    F_(BIAS_ACC,BIAS_ACC) = Eigen::Matrix3d::Identity();
+    F_(BIAS_GYR,BIAS_GYR) = Eigen::Matrix3d::Identity();
+
+    G_(BIAS_ACC,N_BA) = Eigen::Matrix3d::Identity()*delta_timestamp;
+    G_(BIAS_GYR,N_BG) = Eigen::Matrix3d::Identity()*delta_timestamp;
 
     real_state.predict_cov = F*real_state.predict_cov*F.transpose() + G*Rn*G.transpose();
 }
@@ -217,10 +231,9 @@ void EKF::Predict(const IMUData & raw_imu)
 void EKF::Update(const GPSData & gps)
 {
     std::cout<<"------- EKF output before correct:-------"<<std::endl;
-    std::cout<<MEAN_(POS).transpose()<<"\t"<< MEAN_(ROT).transpose()<<"\t"<<MEAN_(BIAS_ACC).transpose()<<std::endl;
-    std::cout<<"------- real output:-------"<<std::endl;
-    std::cout<<gps.position.transpose()<<"\t"<<gps.orientation.transpose()<<std::endl; 
-
+    std::cout<<MEAN_(POS).transpose()<<"\t"<< MEAN_(ROT).transpose()<<"\t"<<MEAN_(BIAS_ACC).transpose()<<"\t" << MEAN_(BIAS_GYR).transpose()<<std::endl;
+    // std::cout<<"------- real output:-------"<<std::endl;
+    // std::cout<<gps.position.transpose()<<"\t"<<gps.orientation.transpose()<<std::endl; 
 
     // 这里主要使用和EKF对等的优化方法进行更新，具体内容见 doc.md
 
@@ -263,16 +276,22 @@ void EKF::Update(const GPSData & gps)
     hybrid_hessian += J_orientation.transpose() * gps.orientation_info * J_orientation;
     hybrid_hessian += real_state.predict_cov.inverse();
 
+    cout<<"-----Covariance:------"<<endl<<real_state.predict_cov.inverse().diagonal().transpose()<<endl;
+    
     hybrid_gradient.setZero();
     hybrid_gradient += -J_position.transpose() * gps.postion_info * pos_res;
     hybrid_gradient += -J_orientation.transpose() * gps.orientation_info * rot_res;
 
     delta_x = hybrid_hessian.ldlt().solve(hybrid_gradient);
 
+    // hybird_hessian 条件数查看
+
+    cout<<"------Hessian:------"<<endl<<hybrid_hessian.diagonal().transpose()<<endl;
+
     real_state.UpdateMean(delta_x);
     real_state.UpdateCov(hybrid_hessian.inverse());
     std::cout<<"------- EKF output:-------"<<std::endl;
-    std::cout<<MEAN_(POS).transpose()<<"\t"<< MEAN_(ROT).transpose()<<std::endl;
+    std::cout<<MEAN_(POS).transpose()<<"\t"<< MEAN_(ROT).transpose()<<"\t"<<MEAN_(BIAS_ACC).transpose()<<"\t" << MEAN_(BIAS_GYR).transpose()<<std::endl;
     std::cout<<"------- real output:-------"<<std::endl;
     std::cout<<gps.position.transpose()<<"\t"<<gps.orientation.transpose()<<std::endl; 
     

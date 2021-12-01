@@ -20,7 +20,7 @@ public:
     double imu_timestep = 1./imu_frequency;
     double cam_timestep = 1./cam_frequency;
     double t_start = 0.;
-    double t_end = 20;  //  20 s
+    double t_end = 200;  //  20 s
 
     // noise
     double gyro_bias_sigma = 1.0e-5;      //  origin  1e-5

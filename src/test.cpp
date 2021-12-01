@@ -31,8 +31,11 @@ class TestHandler
         ekf.SetRotation(sim.init_rot);
         ekf.SetVelocity(sim.init_vec);
         
+        // const auto & unit = data_pool.front();
+        // ekf.RunOnce(unit);
 
-        ekf.RunOnce(data_pool.front());   
+        for(const auto & unit:data_pool)
+        ekf.RunOnce(unit);
     }
 
     void TestData()
